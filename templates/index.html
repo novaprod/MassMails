@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Invio di Email Massive</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Animate.css -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <!-- AOS CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <!-- jQuery UI CSS (per la finestra draggable) -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+    <!-- Icona delle impostazioni in alto a sinistra -->
+    <div id="settings-icon" title="Impostazioni">
+        <i class="fas fa-cog"></i>
+    </div>
+
+    <!-- Icona per Visualizzare i Log Passati -->
+    <div id="logs-icon" title="Visualizza Log">
+        <i class="fas fa-history"></i>
+    </div>
+
+    <!-- Contenitore principale con flex -->
+    <div class="flex-1 flex" id="main-content">
+        <!-- Sezione principale -->
+        <div class="main-container p-6">
+            <!-- Pulsante Toggle per l'anteprima e Modifica Email -->
+            <div class="flex justify-end mb-4 space-x-2">
+                <button id="modify-email" class="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    <i class="fas fa-edit mr-2"></i> <span data-i18n="edit_email">Modifica Email</span>
+                </button>
+                <button id="toggle-preview" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-eye mr-2"></i> <span data-i18n="preview_email">Anteprima Email</span>
+                </button>
+            </div>
+            <div class="card shadow-2xl rounded-lg bg-white p-8 animate__animated animate__zoomIn" data-aos="fade-up">
+                <div class="text-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800 flex items-center justify-center">
+                        <i class="fas fa-paper-plane text-blue-600 mr-2"></i>
+                        <span data-i18n="send_email">Invio di Email Massiva</span>
+                    </h2>
+                    <p class="text-gray-600 mt-2" data-i18n="send_email_description">Invia email personalizzate a molti destinatari in modo semplice e veloce.</p>
+                </div>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+                <form id="emailForm" method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-4">
+                        {{ form.subject.label(class="block text-gray-700 font-semibold mb-2", **{'data-i18n': 'subject'}) }}
+                        {{ form.subject(id="email-subject", class="form-control w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500") }}
+                    </div>
+                    <div class="mb-4">
+                        {{ form.body.label(class="block text-gray-700 font-semibold mb-2", **{'data-i18n': 'body'}) }}
+                        {{ form.body(id="email-body", class="form-control w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500", rows="5", placeholder="Inserisci il corpo del messaggio", **{'data-i18n-placeholder': 'body_placeholder'}) }}
+                    </div>
+                    <!-- Toggle Switch "Invia come template" -->
+                    <div class="flex items-center mb-4">
+                        <label class="toggle-switch">
+                            {{ form.html(id="template_checkbox") }}
+                            <span class="slider"></span>
+                        </label>
+                        <label for="template_checkbox" class="ml-3 text-gray-700 font-semibold" data-i18n="send_as_template">Invia come template</label>
+                    </div>
+                    <!-- Nuova Sezione Template (Ora posizionata sopra CSV e Allegati) -->
+                    <div class="mb-4 disabled-field" id="template_field">
+                        <label class="block text-gray-700 font-semibold mb-2" for="template_file" data-i18n="email_template">Template Email</label>
+                        <div class="relative inline-block">
+                            <button type="button" id="template_button" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                                <span id="template-file-name" data-i18n="choose_template">Scegli il template</span>
+                                <i class="fas fa-file-alt ml-2"></i>
+                            </button>
+                            <input type="file" id="template_file" accept=".html" class="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer" disabled>
+                        </div>
+                        <div class="form-text text-gray-500" data-i18n="template_help">Carica un file HTML come template dell'email.</div>
+                    </div>
+                    <!-- Campo CSV e Pulsante Email Manuali -->
+                    <div class="mb-4" id="csv_field">
+                        {{ form.csv_file.label(class="block text-gray-700 font-semibold mb-2", **{'data-i18n': 'csv_file'}) }}
+                        <div class="flex items-center space-x-3">
+                            <div class="relative inline-block">
+                                <button type="button" id="csv_button" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <span id="csv-file-name" data-i18n="choose_csv">Scegli il file CSV</span>
+                                    <i class="fas fa-file-csv ml-2"></i>
+                                </button>
+                                {{ form.csv_file(id="csv_file", class="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer") }}
+                            </div>
+                            <!-- Nuovo Pulsante per Email Manuali -->
+                            <button type="button" id="openManualEmailsModal" class="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                <i class="fas fa-list mr-2"></i> <span data-i18n="insert_manual_emails">Inserisci Email Manualmente</span>
+                            </button>
+                        </div>
+                        <div class="form-text text-gray-500" data-i18n="csv_help">Il file CSV deve contenere una colonna 'email'.<br>Oppure, puoi inserire email manualmente.</div>
+                        
+                        <!-- Visualizza il conteggio delle email manuali -->
+                        <div class="form-text text-gray-500 mt-2" id="manual-emails-count" data-i18n="no_manual_emails">Nessuna email inserita manualmente.</div>
+                        
+                        <!-- Campo nascosto per le email manuali -->
+                        {{ form.manual_emails(id="manual_emails", style="display:none;") }}
+                    </div>
+                    <!-- Campo Allegati -->
+                    <div class="mb-4" id="attachments_field">
+                        {{ form.attachments.label(class="block text-gray-700 font-semibold mb-2", **{'data-i18n': 'attachments'}) }}
+                        <div class="relative inline-block">
+                            <button type="button" id="attachments_button" class="flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span id="attachments-file-name" data-i18n="choose_attachments">Scegli gli allegati</span>
+                                <i class="fas fa-paperclip ml-2"></i>
+                            </button>
+                            {{ form.attachments(id="attachments", class="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer", multiple=true) }}
+                        </div>
+                        <div class="form-text text-gray-500" data-i18n="attachments_help">Puoi aggiungere più allegati.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                        <i class="fas fa-paper-plane mr-2"></i> <span data-i18n="send_email_button">Invia Email</span>
+                    </button>
+                </form>
+                <!-- Rimosso il vecchio progress-container -->
+            </div>
+        </div>
+        <!-- Pannello di anteprima -->
+        <div id="preview-panel">
+            <div class="email-preview" id="email-preview">
+                <!-- Banner -->
+                <div id="email-banner"></div>
+                <!-- Intestazione dell'email -->
+                <div class="email-header">
+                    <div class="subject" id="preview-subject" data-i18n="[text]preview_subject">[Oggetto]</div>
+                    <div class="from-to">
+                        <div class="email-content">
+                            <div class="sender-icon">E</div>
+                            <div>
+                                <strong>Test</strong> &lt;info@test.com&gt;<br>
+                                a me
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Divisore personalizzato -->
+                <div id="custom-divider"></div>
+                <!-- Corpo dell'email -->
+                <div class="email-body" id="preview-body" data-i18n="[html]preview_body">[Corpo del messaggio]</div>
+                <!-- Footer dell'email -->
+                <div class="email-footer" id="email-footer" data-i18n="email_footer">
+                    © 2023 Test. Tutti i diritti riservati.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale per Inserire Email Manualmente -->
+    <div class="modal fade" id="manualEmailsModal" tabindex="-1" aria-labelledby="manualEmailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manualEmailsModalLabel" data-i18n="insert_manual_emails">Inserisci Email Manualmente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="manualEmailsForm">
+                        <div class="mb-3">
+                            <label for="manualEmailsTextarea" class="form-label" data-i18n="emails_per_line">Email (una per riga)</label>
+                            <textarea class="form-control" id="manualEmailsTextarea" rows="10" placeholder="esempio1@gmail.com&#10;esempio2@gmail.com" data-i18n-placeholder="emails_placeholder"></textarea>
+                            <div class="form-text text-gray-500" data-i18n="emails_help">Inserisci una lista di indirizzi email, uno per riga.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <!-- Bottone per Scaricare le Email Manuali come CSV -->
+                    <button type="button" class="btn btn-success me-auto" id="downloadManualEmails" data-i18n="download_csv">
+                        <i class="fas fa-download mr-2"></i> <span data-i18n="download_csv_text">Scarica CSV</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Annulla</button>
+                    <button type="button" class="btn btn-primary" id="saveManualEmails" data-i18n="save_emails">Salva Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Finestra di modifica personalizzata -->
+    <div id="modifyEmailWindow">
+        <div class="window-header">
+            <h5 class="modal-title" data-i18n="edit_email_window">Modifica Email</h5>
+            <button type="button" class="btn-close" id="closeModifyWindow" aria-label="Chiudi"></button>
+        </div>
+        <div class="window-body">
+            <form id="modifyEmailForm">
+              <!-- Caricamento Banner -->
+              <div class="mb-3">
+                <label for="bannerInput" class="form-label" data-i18n="upload_banner">Carica Banner</label>
+                <input class="form-control" type="file" id="bannerInput" accept="image/*" data-i18n-placeholder="upload_banner_placeholder">
+              </div>
+              <!-- Testo del Footer -->
+              <div class="mb-3">
+                <label for="footerText" class="form-label" data-i18n="footer_text">Testo del Footer</label>
+                <textarea class="form-control" id="footerText" rows="2">© 2023 Test. Tutti i diritti riservati.</textarea>
+              </div>
+              <!-- Selettore Font -->
+              <div class="mb-3">
+                <label for="fontSelect" class="form-label" data-i18n="custom_font">Font Personalizzato</label>
+                <select class="form-select" id="fontSelect">
+                  <option value="Arial, sans-serif">Arial</option>
+                  <option value="Tahoma, sans-serif">Tahoma</option>
+                  <option value="Verdana, sans-serif">Verdana</option>
+                  <option value="'Roboto', sans-serif">Roboto</option>
+                  <option value="'Open Sans', sans-serif">Open Sans</option>
+                </select>
+              </div>
+            </form>
+        </div>
+        <div class="window-footer">
+            <button type="button" class="btn btn-secondary" id="closeModifyWindowFooter" data-i18n="close">Chiudi</button>
+            <button type="button" class="btn btn-primary" id="saveChanges" data-i18n="save_changes">Salva modifiche</button>
+        </div>
+    </div>
+    
+    <!-- Modale per Visualizzare i Log Passati -->
+    <div class="modal fade" id="logsModal" tabindex="-1" aria-labelledby="logsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logsModalLabel" data-i18n="email_logs">Log di Invio Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-group" id="logsList">
+                        <!-- I log verranno caricati dinamicamente tramite JavaScript -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="close">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modale Email Limit -->
+    <div class="modal" id="emailLimitModal" tabindex="-1" aria-labelledby="emailLimitModalLabel" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="emailLimitModalLabel" data-i18n="debug_settings">Debug e Impostazioni Sviluppatore</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Sezione Modifica Limite Email -->
+                    <form id="emailLimitForm">
+                        <div class="mb-3">
+                            <label for="emailLimitInput" class="form-label" data-i18n="max_email_limit">Limite massimo di email</label>
+                            <input type="number" class="form-control" id="emailLimitInput" min="1" placeholder="Inserisci il nuovo limite massimo" data-i18n-placeholder="max_email_limit_placeholder">
+                        </div>
+                    </form>
+                    <!-- Console di Debug -->
+                    <div class="mt-4">
+                        <h6 data-i18n="debug_console">Console di Debug</h6>
+                        <textarea id="debugConsole" class="form-control" rows="8" readonly></textarea>
+                    </div>
+                    <!-- Pulsanti di Utilità -->
+                    <div class="mt-4">
+                        <h6 data-i18n="utilities">Utilità</h6>
+                        <button type="button" class="btn btn-warning me-2" id="clearDebugConsole" data-i18n="clear_console">Pulisci Console</button>
+                        <button type="button" class="btn btn-danger me-2" id="forceReload" data-i18n="force_reload">Forza Reload</button>
+                        <!-- Nuovo Pulsante per Resettare le Email Giornaliere -->
+                        <button type="button" class="btn btn-danger" id="resetSentCounts" style="background-color: #dc3545; border-color: #a71d2a;" data-i18n="reset_daily_emails">
+                            <i class="fas fa-redo-alt"></i> <span data-i18n="reset_daily_emails_text">Resetta Email Giornaliere</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="close">Chiudi</button>
+                    <button type="button" class="btn btn-primary" id="saveEmailLimit" data-i18n="save">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modale Impostazioni Account Gmail -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered"> <!-- Aggiunta di modal-dialog-centered -->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel" data-i18n="gmail_account_management">Gestione Account Gmail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form per Aggiungere un Nuovo Account -->
+                    <form id="addAccountForm" class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="gmailEmail" class="form-label" data-i18n="gmail_email">Email Gmail</label>
+                                <input type="email" class="form-control" id="gmailEmail" placeholder="esempio@gmail.com" required data-i18n-placeholder="gmail_email_placeholder">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gmailPassword" class="form-label" data-i18n="in_app_password">Password In-App</label>
+                                <input type="password" class="form-control" id="gmailPassword" placeholder="Password" required data-i18n-placeholder="in_app_password_placeholder">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary" data-i18n="add_account">Aggiungi Account</button>
+                        </div>
+                    </form>
+                    <!-- Lista degli Account Aggiunti -->
+                    <h6 data-i18n="added_accounts">Account Aggiunti:</h6>
+                    <ul class="list-group" id="accountsList">
+                        <!-- Gli account verranno aggiunti dinamicamente qui tramite JavaScript -->
+                    </ul>
+
+                    <!-- Sezione Nuova: Lingua e Tema -->
+                    <hr class="my-4">
+                    <h6 data-i18n="additional_settings">Impostazioni Aggiuntive:</h6>
+                    <!-- Selezione della Lingua -->
+                    <div class="mb-3">
+                        <label for="languageSelect" class="form-label" data-i18n="language">Lingua</label>
+                        <select class="form-select" id="languageSelect">
+                            <option value="it" selected>Italiano</option>
+                            <option value="en">English</option>
+                            <!-- Aggiungi altre lingue qui -->
+                        </select>
+                        <div class="form-text" data-i18n="language_help">Seleziona la lingua dell'interfaccia.</div>
+                    </div>
+                    <!-- Toggle per Tema Scuro/Chiaro -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="close">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modale per la Barra di Progressione -->
+    <div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="progressModalLabel" data-i18n="sending_emails">Invio Email in corso</h5>
+                </div>
+                <div class="modal-body">
+                    <h5 class="text-center text-gray-700 mb-2" data-i18n="sending_progress">Progressione Invio Email</h5>
+                    <div class="progress">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="text-center text-gray-600 mt-2" id="progress-text" data-i18n="progress_percentage">0% completato</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- AOS JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <!-- ProgressBar.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/progressbar.js/1.0.1/progressbar.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- jQuery UI (per la finestra draggable) -->
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <!-- Google Fonts per Roboto e Open Sans -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto|Open+Sans" rel="stylesheet">
+    <script src="../static/js/csv_convert.js"></script>
+
+</body>
+</html>
