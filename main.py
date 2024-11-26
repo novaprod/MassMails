@@ -13,7 +13,6 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import smtplib
-import pandas as pd
 import re
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, BooleanField, FileField, MultipleFileField
