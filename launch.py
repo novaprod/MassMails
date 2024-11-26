@@ -15,18 +15,18 @@ class ModernFlaskLauncher:
         self.root.geometry("900x650")
         self.root.minsize(800, 600)
         
-        
+        # Configurazione iniziale
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         
         self.server_process = None
         self.is_server_running = False
         
-        
+        # Caricamento configurazione e creazione UI
         self.load_config()
         self.create_widgets()
         
-        
+        # Binding per il ridimensionamento della finestra
         self.root.bind("<Configure>", self.on_window_resize)
         
     def load_config(self):
@@ -40,7 +40,7 @@ class ModernFlaskLauncher:
         try:
             with open('launcher_config.json', 'r') as f:
                 loaded_config = json.load(f)
-                
+                # Merge con i valori di default per assicurarsi che tutti i campi esistano
                 self.config = {**default_config, **loaded_config}
         except FileNotFoundError:
             self.config = default_config
@@ -52,11 +52,11 @@ class ModernFlaskLauncher:
             json.dump(self.config, f, indent=4)
 
     def create_widgets(self):
-        
+        # Configurazione del grid layout principale
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         
-        
+        # Creazione e stile dell'header
         self.header = ctk.CTkFrame(
             self.root, 
             height=70, 
@@ -66,7 +66,7 @@ class ModernFlaskLauncher:
         self.header.grid(row=0, column=0, sticky="nsew")
         self.create_header()
         
-        
+        # Contenuto principale
         self.main_content = ctk.CTkFrame(
             self.root,
             fg_color=("gray95", "gray10")
@@ -74,13 +74,13 @@ class ModernFlaskLauncher:
         self.main_content.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
         self.create_main_content()
         
-        
+        # Footer con informazioni aggiuntive
         self.create_footer()
         
     def create_header(self):
         self.header.grid_columnconfigure(1, weight=1)
         
-        
+        # Logo/Titolo
         title_frame = ctk.CTkFrame(
             self.header,
             fg_color="transparent"
@@ -103,14 +103,14 @@ class ModernFlaskLauncher:
         )
         subtitle.pack()
         
-        
+        # Controls frame
         controls_frame = ctk.CTkFrame(
             self.header,
             fg_color="transparent"
         )
         controls_frame.grid(row=0, column=2, padx=20)
         
-        
+        # Theme switcher
         self.appearance_mode_menu = ctk.CTkSegmentedButton(
             controls_frame,
             values=["Scuro", "Chiaro"],
@@ -121,20 +121,20 @@ class ModernFlaskLauncher:
         self.appearance_mode_menu.pack(pady=5)
         
     def create_main_content(self):
-        
+        # Frame per i controlli principali
         self.control_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="transparent"
         )
         self.control_frame.pack(fill="x", pady=(0, 20))
         
-        
+        # Configurazione del grid layout nel control_frame
         self.control_frame.grid_columnconfigure(0, weight=1)
         self.control_frame.grid_rowconfigure(0, weight=0)
         self.control_frame.grid_rowconfigure(1, weight=0)
         self.control_frame.grid_rowconfigure(2, weight=0)
         
-        
+        # Bottoni principali
         button_frame = ctk.CTkFrame(
             self.control_frame,
             fg_color="transparent"
@@ -148,8 +148,8 @@ class ModernFlaskLauncher:
             width=180,
             height=40,
             corner_radius=8,
-            fg_color=("
-            hover_color=("
+            fg_color=("#2196F3", "#1976D2"),
+            hover_color=("#1E88E5", "#1565C0"),
             command=self.start_server
         )
         self.start_button.pack(side="left", padx=10)
@@ -161,23 +161,23 @@ class ModernFlaskLauncher:
             width=180,
             height=40,
             corner_radius=8,
-            fg_color=("
-            hover_color=("
+            fg_color=("#F44336", "#D32F2F"),
+            hover_color=("#E53935", "#C62828"),
             command=self.stop_server,
             state="disabled"
         )
         self.stop_button.pack(side="left", padx=10)
         
-        
+        # Aggiungi lo status label sotto i bottoni
         self.status_label = ctk.CTkLabel(
             self.control_frame,
             text="◉ Server Spento",
             font=ctk.CTkFont(size=15),
-            text_color=("
+            text_color=("#E57373", "#EF5350")
         )
         self.status_label.grid(row=1, column=0, pady=(10, 0))
         
-        
+        # Separatore
         separator = ctk.CTkFrame(
             self.main_content,
             height=2,
@@ -185,7 +185,7 @@ class ModernFlaskLauncher:
         )
         separator.pack(fill="x", pady=15)
         
-        
+        # Console frame
         console_frame = ctk.CTkFrame(
             self.main_content,
             fg_color=("gray90", "gray15")
@@ -215,7 +215,7 @@ class ModernFlaskLauncher:
         )
         self.clear_console_btn.pack(side="right")
         
-        
+        # Console text area
         self.console = ctk.CTkTextbox(
             console_frame,
             font=ctk.CTkFont(family="Consolas", size=13),
@@ -236,7 +236,7 @@ class ModernFlaskLauncher:
         
         footer.grid_columnconfigure(1, weight=1)
         
-        
+        # Port info
         port_label = ctk.CTkLabel(
             footer,
             text=f"Porta: {self.config.get('port', 5000)}",
@@ -245,7 +245,7 @@ class ModernFlaskLauncher:
         )
         port_label.grid(row=0, column=0, padx=20, pady=5)
         
-        
+        # Last access
         last_access = self.config.get('last_access')
         if last_access:
             try:
@@ -259,11 +259,11 @@ class ModernFlaskLauncher:
                 )
                 access_label.grid(row=0, column=1, padx=20, pady=5)
             except (ValueError, TypeError):
-                pass  
+                pass  # Ignora se il formato della data non è valido
             
     def update_status(self, message, is_running=False):
         status_text = f"◉ {message}"
-        status_color = ("
+        status_color = ("#66BB6A", "#4CAF50") if is_running else ("#E57373", "#EF5350")
         
         self.status_label.configure(
             text=status_text,
@@ -308,7 +308,7 @@ class ModernFlaskLauncher:
                 stderr=subprocess.PIPE
             )
             
-            
+            # Monitor output in real-time
             while True:
                 output = self.server_process.stdout.readline()
                 if output:
@@ -334,7 +334,7 @@ class ModernFlaskLauncher:
         dialog = ctk.CTkInputDialog(
             text=message,
             title="Errore",
-            button_fg_color=("
+            button_fg_color=("#F44336", "#D32F2F")
         )
         
     def change_appearance_mode(self, new_appearance_mode):
@@ -344,13 +344,13 @@ class ModernFlaskLauncher:
         self.save_config()
         
     def on_window_resize(self, event=None):
-        
+        # Aggiusta dinamicamente l'altezza della console in base alla dimensione della finestra
         if hasattr(self, 'console'):
             window_height = self.root.winfo_height()
             self.console.configure(height=max(250, window_height - 400))
 
     def run(self):
-        
+        # Carica le preferenze del tema
         if self.config.get('theme') == 'light':
             self.appearance_mode_menu.set("Chiaro")
             ctk.set_appearance_mode("light")
