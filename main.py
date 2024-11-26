@@ -21,12 +21,9 @@ from wtforms.validators import DataRequired, Optional
 from PIL import Image, ImageTk
 import customtkinter as ctk
 
-# ==================== Flask Application ====================
-
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Assicurati di cambiare questa chiave in produzione
+app.secret_key = 'your_secret_key'
 
-# Configurazioni per i caricamenti
 UPLOAD_FOLDER_CSV = os.path.join('static', 'uploads', 'csv')
 UPLOAD_FOLDER_ATTACHMENTS = os.path.join('static', 'uploads', 'attachments')
 LOGS_FOLDER = os.path.join('logs')
@@ -36,21 +33,17 @@ os.makedirs(LOGS_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER_CSV'] = UPLOAD_FOLDER_CSV
 app.config['UPLOAD_FOLDER_ATTACHMENTS'] = UPLOAD_FOLDER_ATTACHMENTS
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Configurazione del logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Percorso del file CSV degli account Gmail
 GMAIL_ACCOUNTS_CSV = os.path.join('static', 'uploads', 'gmail_accounts.csv')
 
-# Creazione del file CSV degli account Gmail se non esiste
 if not os.path.exists(GMAIL_ACCOUNTS_CSV):
     df_accounts = pd.DataFrame(columns=['email', 'password', 'sent_today', 'last_sent_date'])
     df_accounts.to_csv(GMAIL_ACCOUNTS_CSV, index=False)
 
-# Definizione del Form per l'invio delle email
 class EmailForm(FlaskForm):
     subject = StringField('Oggetto', validators=[DataRequired()])
     body = TextAreaField('Corpo del Messaggio', validators=[DataRequired()])
@@ -70,7 +63,6 @@ class EmailForm(FlaskForm):
 
         return True
 
-# Funzioni per gestire gli account Gmail
 def load_gmail_accounts():
     df = pd.read_csv(GMAIL_ACCOUNTS_CSV)
     today_str = datetime.now().strftime('%Y-%m-%d')
@@ -89,10 +81,8 @@ def get_available_account(df, email_limit):
             return idx, row
     return None, None
 
-# Variabile globale per il limite delle email
-current_email_limit = 500  # Valore predefinito
+current_email_limit = 500
 
-# Rotte Flask
 @app.route('/', methods=['GET', 'POST'])
 def index():
     form = EmailForm()
@@ -151,7 +141,7 @@ def index():
 
         global current_email_limit
         if 'current_email_limit' not in globals():
-            current_email_limit = 500  # Valore predefinito
+            current_email_limit = 500
         email_limit = current_email_limit
 
         log_messages = []
@@ -337,8 +327,6 @@ def reset_sent_counts_route():
         logger.error(f"Errore nel resettare i contatori delle email giornaliere: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# ==================== Launcher GUI ====================
-
 class ModernFlaskLauncher:
     def __init__(self):
         self.root = ctk.CTk()
@@ -346,18 +334,15 @@ class ModernFlaskLauncher:
         self.root.geometry("900x650")
         self.root.minsize(800, 600)
         
-        # Configurazione iniziale
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         
         self.server_thread = None
         self.is_server_running = False
         
-        # Caricamento configurazione e creazione UI
         self.load_config()
         self.create_widgets()
         
-        # Binding per il ridimensionamento della finestra
         self.root.bind("<Configure>", self.on_window_resize)
         
     def load_config(self):
@@ -371,7 +356,6 @@ class ModernFlaskLauncher:
         try:
             with open('launcher_config.json', 'r') as f:
                 loaded_config = json.load(f)
-                # Merge con i valori di default per assicurarsi che tutti i campi esistano
                 self.config = {**default_config, **loaded_config}
         except FileNotFoundError:
             self.config = default_config
@@ -383,11 +367,9 @@ class ModernFlaskLauncher:
             json.dump(self.config, f, indent=4)
 
     def create_widgets(self):
-        # Configurazione del grid layout principale
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         
-        # Creazione e stile dell'header
         self.header = ctk.CTkFrame(
             self.root, 
             height=70, 
@@ -397,7 +379,6 @@ class ModernFlaskLauncher:
         self.header.grid(row=0, column=0, sticky="nsew")
         self.create_header()
         
-        # Contenuto principale
         self.main_content = ctk.CTkFrame(
             self.root,
             fg_color=("gray95", "gray10")
@@ -405,13 +386,11 @@ class ModernFlaskLauncher:
         self.main_content.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
         self.create_main_content()
         
-        # Footer con informazioni aggiuntive
         self.create_footer()
         
     def create_header(self):
         self.header.grid_columnconfigure(1, weight=1)
         
-        # Logo/Titolo
         title_frame = ctk.CTkFrame(
             self.header,
             fg_color="transparent"
@@ -434,14 +413,12 @@ class ModernFlaskLauncher:
         )
         subtitle.pack()
         
-        # Controls frame
         controls_frame = ctk.CTkFrame(
             self.header,
             fg_color="transparent"
         )
         controls_frame.grid(row=0, column=2, padx=20)
         
-        # Theme switcher
         self.appearance_mode_menu = ctk.CTkSegmentedButton(
             controls_frame,
             values=["Scuro", "Chiaro"],
@@ -452,20 +429,17 @@ class ModernFlaskLauncher:
         self.appearance_mode_menu.pack(pady=5)
         
     def create_main_content(self):
-        # Frame per i controlli principali
         self.control_frame = ctk.CTkFrame(
             self.main_content,
             fg_color="transparent"
         )
         self.control_frame.pack(fill="x", pady=(0, 20))
         
-        # Configurazione del grid layout nel control_frame
         self.control_frame.grid_columnconfigure(0, weight=1)
         self.control_frame.grid_rowconfigure(0, weight=0)
         self.control_frame.grid_rowconfigure(1, weight=0)
         self.control_frame.grid_rowconfigure(2, weight=0)
         
-        # Bottoni principali
         button_frame = ctk.CTkFrame(
             self.control_frame,
             fg_color="transparent"
@@ -499,7 +473,6 @@ class ModernFlaskLauncher:
         )
         self.stop_button.pack(side="left", padx=10)
         
-        # Aggiungi lo status label sotto i bottoni
         self.status_label = ctk.CTkLabel(
             self.control_frame,
             text="◉ Server Spento",
@@ -508,7 +481,6 @@ class ModernFlaskLauncher:
         )
         self.status_label.grid(row=1, column=0, pady=(10, 0))
         
-        # Separatore
         separator = ctk.CTkFrame(
             self.main_content,
             height=2,
@@ -516,7 +488,6 @@ class ModernFlaskLauncher:
         )
         separator.pack(fill="x", pady=15)
         
-        # Console frame
         console_frame = ctk.CTkFrame(
             self.main_content,
             fg_color=("gray90", "gray15")
@@ -546,7 +517,6 @@ class ModernFlaskLauncher:
         )
         self.clear_console_btn.pack(side="right")
         
-        # Console text area
         self.console = ctk.CTkTextbox(
             console_frame,
             font=ctk.CTkFont(family="Consolas", size=13),
@@ -567,7 +537,6 @@ class ModernFlaskLauncher:
         
         footer.grid_columnconfigure(1, weight=1)
         
-        # Port info
         port_label = ctk.CTkLabel(
             footer,
             text=f"Porta: {self.config.get('port', 5000)}",
@@ -576,7 +545,6 @@ class ModernFlaskLauncher:
         )
         port_label.grid(row=0, column=0, padx=20, pady=5)
         
-        # Last access
         last_access = self.config.get('last_access')
         if last_access:
             try:
@@ -590,8 +558,8 @@ class ModernFlaskLauncher:
                 )
                 access_label.grid(row=0, column=1, padx=20, pady=5)
             except (ValueError, TypeError):
-                pass  # Ignora se il formato della data non è valido
-        
+                pass
+    
     def update_status(self, message, is_running=False):
         status_text = f"◉ {message}"
         status_color = ("#66BB6A", "#4CAF50") if is_running else ("#E57373", "#EF5350")
@@ -633,7 +601,6 @@ class ModernFlaskLauncher:
 
     def _run_flask_app(self):
         try:
-            # Avvia il server Flask
             from werkzeug.serving import make_server
 
             class ServerThread(threading.Thread):
@@ -652,7 +619,6 @@ class ModernFlaskLauncher:
             self.flask_server = ServerThread(app, "127.0.0.1", self.config.get('port', 5000))
             self.flask_server.start()
 
-            # Log del server avviato
             self.root.after(0, lambda: self.console.insert("end", f"[{datetime.now().strftime('%H:%M:%S')}] Server Flask avviato.\n"))
             self.console.see("end")
 
@@ -691,13 +657,11 @@ class ModernFlaskLauncher:
         self.save_config()
 
     def on_window_resize(self, event=None):
-        # Aggiusta dinamicamente l'altezza della console in base alla dimensione della finestra
         if hasattr(self, 'console'):
             window_height = self.root.winfo_height()
             self.console.configure(height=max(250, window_height - 400))
 
     def run(self):
-        # Carica le preferenze del tema
         if self.config.get('theme') == 'light':
             self.appearance_mode_menu.set("Chiaro")
             ctk.set_appearance_mode("light")
@@ -707,12 +671,7 @@ class ModernFlaskLauncher:
             
         self.root.mainloop()
 
-# ==================== Esecuzione ====================
-
 if __name__ == "__main__":
     app_thread = threading.Thread(target=lambda: app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False))
-    # Non avviare automaticamente il server Flask all'avvio del launcher
-    # L'avvio del server è gestito dal launcher GUI
-
     launcher = ModernFlaskLauncher()
     launcher.run()
